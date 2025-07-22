@@ -9,10 +9,6 @@ const apiRoute = require('./apiRoute/apiRoute')
 // const userRoute = require('./userdataRoute/userdataRoute')
 // const check = require('./middleware/block')
 
-
-
-const app = express()
-
 // This works locally only, and is ignored on Vercel
 if (process.env.NODE_ENV === 'development') {
   DotEnv.config({ path: ['.env.local', '.env'] });
@@ -20,6 +16,8 @@ if (process.env.NODE_ENV === 'development') {
   DotEnv.config();
 }
 
+
+const app = express()
 
 Database()
 
@@ -35,4 +33,5 @@ app.get('/',async(req,res)=>{
 
 app.listen(Port, () => {
     console.log(`Server is running on port ${Port}`);
+    
 })
