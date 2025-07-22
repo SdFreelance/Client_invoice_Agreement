@@ -85,7 +85,9 @@ const createInvoice = async (req, res) => {
     });
     // console.log(newInvoice);
 
-    res.status(201).json({ success: true, statuscode: 200, message: "invoice saved!" });
+    res
+      .status(201)
+      .json({ success: true, statuscode: 200, message: "invoice saved!" });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to create invoice" });
@@ -95,34 +97,33 @@ const createInvoice = async (req, res) => {
 //=====Send Invoice=====//
 const sendInvoice = async (req, res) => {
   try {
-    
     const invoiceNumber = req.params.invoiceNumber;
-    const invoice = await Invoice.findOne({invoiceNumber});
-    
+    const invoice = await Invoice.findOne({ invoiceNumber });
+
     if (!invoice) {
-      
-    }else{
-    const rawDate = new Date();
-    const day = String(rawDate.getDate()).padStart(2, "0");
-    const month = String(rawDate.getMonth() + 1).padStart(2, "0");
-    const year = rawDate.getFullYear();
+    } else {
+      const rawDate = new Date();
+      const day = String(rawDate.getDate()).padStart(2, "0");
+      const month = String(rawDate.getMonth() + 1).padStart(2, "0");
+      const year = rawDate.getFullYear();
 
-    const invoiceDate = `${day}/${month}/${year}`;
+      const invoiceDate = `${day}/${month}/${year}`;
 
-    const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get("host")}`;
+      const baseUrl =
+        process.env.BASE_URL || `${req.protocol}://${req.get("host")}`;
 
       const clientEmail = invoice.clientEmail;
       const dueDate = invoice.dueDate;
 
-    // Load HTML template
-    const templateUrl =
-      "https://en7bfhvcnyczqxh0.public.blob.vercel-storage.com/client-invoice-agreement-store/templates/template.html";
-    let html = await fetch(templateUrl).then((res) => res.text());
-     
-    let dueDateRow = "";
+      // Load HTML template
+      const templateUrl =
+        "https://en7bfhvcnyczqxh0.public.blob.vercel-storage.com/client-invoice-agreement-store/templates/template.html";
+      let html = await fetch(templateUrl).then((res) => res.text());
 
-    if (invoice.paymentstatus === "Due") {
-      dueDateRow = `
+      let dueDateRow = "";
+
+      if (invoice.paymentstatus === "Due") {
+        dueDateRow = `
     <tr>
       <td style="padding: 20px 0">
         <table width="100%">
@@ -151,29 +152,31 @@ const sendInvoice = async (req, res) => {
       </td>
     </tr>
   `;
-    }
-    html = html.replace(/{{dueDateRow}}/g, dueDateRow || "");
+      }
+      html = html.replace(/{{dueDateRow}}/g, dueDateRow || "");
       const replacements = {
-      invoiceNumber: invoice.invoiceNumber || "",
-      secureToken: invoice.secureToken || null,
-      invoiceDate: invoiceDate,
-      clientName: invoice.clientName || "",
-      clientEmail: invoice.clientEmail || "",
-      projectName: invoice.projectName || "None",
-      billperiods: invoice.billperiod,
-      projectName: invoice.projectName || "N/A",
-      pay: invoice.pay || "N/A",
-      paymentstatus: invoice.paymentstatus || "N/A",
-      baseUrl:baseUrl
-    };
+        invoiceNumber: invoice.invoiceNumber || "",
+        secureToken: invoice.secureToken || null,
+        invoiceDate: invoiceDate,
+        clientName: invoice.clientName || "",
+        clientEmail: invoice.clientEmail || "",
+        projectName: invoice.projectName || "None",
+        billperiods: invoice.billperiod,
+        projectName: invoice.projectName || "N/A",
+        pay: invoice.pay || "N/A",
+        paymentstatus: invoice.paymentstatus || "N/A",
+        baseUrl: baseUrl,
+      };
 
-    Object.entries(replacements).forEach(([key, value]) => {
-      html = html.replace(new RegExp(`{{${key}}}`, "g"), value);
-    });
-      await sendMail({clientEmail,html});
+      Object.entries(replacements).forEach(([key, value]) => {
+        html = html.replace(new RegExp(`{{${key}}}`, "g"), value);
+      });
+      await sendMail({ clientEmail, html });
 
-    res.status(200).json({ success: true, statuscode: 200, message: "Sent to client"});
-  }
+      res
+        .status(200)
+        .json({ success: true, statuscode: 200, message: "Sent to client" });
+    }
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to create invoice" });
@@ -234,16 +237,15 @@ const getInvoiceByQuery = async (req, res) => {
     if (invoiceNumber) {
       query.invoiceNumber = invoiceNumber;
     }
-if (date) {
-  // Convert DD/MM/YYYY to start and end Date objects
-  const [day, month, year] = date.split("/");
+    if (date) {
+      // Convert DD/MM/YYYY to start and end Date objects
+      const [day, month, year] = date.split("/");
 
-  const start = new Date(`${year}-${month}-${day}T00:00:00.000Z`);
-  const end = new Date(`${year}-${month}-${day}T23:59:59.999Z`);
+      const start = new Date(`${year}-${month}-${day}T00:00:00.000Z`);
+      const end = new Date(`${year}-${month}-${day}T23:59:59.999Z`);
 
-  query.createdAt = { $gte: start, $lte: end };
-}
-
+      query.createdAt = { $gte: start, $lte: end };
+    }
 
     const invoices = await Invoice.find(query).sort({ createdAt: -1 });
 
@@ -263,9 +265,15 @@ const downloadInvoice = async (req, res) => {
   try {
     const secureToken = req.query.secureToken || req.params.secureToken;
     const invoice = await Invoice.findOne({ secureToken });
-    if (!invoice) return res.status(404).send(`<h2 style="text-align:center;">Sorry! Your invoice not found</h2>`);
+    if (!invoice)
+      return res
+        .status(404)
+        .send(
+          `<h2 style="text-align:center;">Sorry! Your invoice not found</h2>`
+        );
 
-    const templateUrl = "https://en7bfhvcnyczqxh0.public.blob.vercel-storage.com/client-invoice-agreement-store/templates/invoice.A4.html";
+    const templateUrl =
+      "https://en7bfhvcnyczqxh0.public.blob.vercel-storage.com/client-invoice-agreement-store/templates/invoice.A4.html";
     let html = await fetch(templateUrl).then((res) => res.text());
 
     const replacements = {
@@ -308,11 +316,11 @@ const downloadInvoice = async (req, res) => {
     html = html.replace("{{invoiceItems}}", invoiceItems);
 
     // Launch headless Chromium from AWS Lambda
-const browser = await puppeteer.launch({
-  args: chromium.args,
-  executablePath: await chromium.executablePath(),
-  headless: chromium.headless,
-});
+    const browser = await puppeteer.launch({
+      args: chromium.args,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
+    });
 
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });
@@ -320,7 +328,10 @@ const browser = await puppeteer.launch({
     await browser.close();
 
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", "attachment; filename=test-invoice.pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=invoice${invoice.invoiceNumber}.pdf`
+    );
     res.status(200).send(pdfBuffer);
   } catch (err) {
     console.error("PDF generation error:", err);
@@ -336,5 +347,5 @@ module.exports = {
   createInvoice,
   updateInvoice,
   downloadInvoice,
-  getInvoiceByQuery
+  getInvoiceByQuery,
 };
