@@ -6,6 +6,7 @@ const puppeteer = require("puppeteer");
 const sendMail = require("../smtp/Smtp");
 const numberToWords = require("../middleware/amtTowords");
 const crypto = require("crypto");
+const Chromium = require("chrome-aws-lambda");
 
 
 
@@ -263,23 +264,16 @@ if (date) {
 //=====Client download invoice by client name=====//
 const downloadInvoice = async (req, res) => {
   try {
-    const secureToken = req.params.secureToken;
-    // console.log(secureToken);
-
-    const invoice = await Invoice.findOne({secureToken});
-    // console.log("kl",invoice);
-
+    const secureToken = req.query.secureToken || req.params.secureToken;
+    const invoice = await Invoice.findOne({ secureToken });
     if (!invoice) return res.status(404).send(`<h2 style="text-align:center;">Sorry! Your invoice not found</h2>`);
 
-    // Load HTML template
-    const templateUrl =
-      "https://en7bfhvcnyczqxh0.public.blob.vercel-storage.com/client-invoice-agreement-store/templates/invoice.A4.html";
+    const templateUrl = "https://en7bfhvcnyczqxh0.public.blob.vercel-storage.com/client-invoice-agreement-store/templates/invoice.A4.html";
     let html = await fetch(templateUrl).then((res) => res.text());
 
-    // Replace simple variables
     const replacements = {
       invoiceNumber: invoice.invoiceNumber || "",
-      invoiceDate: new Date(invoice.createdAt).toLocaleDateString(),
+      invoiceDate: new Date(invoice.createdAt).toLocaleDateString("en-GB"),
       clientName: invoice.clientName || "",
       clientEmail: invoice.clientEmail || "",
       advancepayment: `${invoice.advancepayment || "None"}`,
@@ -294,7 +288,6 @@ const downloadInvoice = async (req, res) => {
       html = html.replace(new RegExp(`{{${key}}}`, "g"), value);
     });
 
-    // Build dynamic service rows
     const invoiceItems =
       invoice.services
         ?.map((item) => {
@@ -304,32 +297,34 @@ const downloadInvoice = async (req, res) => {
           const rate = `${item.amount || 0}`;
           const total = `${item.totalamount}`;
           return `
-        <tr style="background-color:#f9f9f9;">
-				  <td width="25%" style="vertical-align: top; padding: 10px; word-break: break-word; border-top: 1px solid transparent; border-right: 1px solid transparent; border-bottom: 1px solid transparent; border-left: 1px solid transparent; text-align:center"><b>${name}</b></td>
-				  <td width="25%" style="vertical-align: top; padding: 10px; word-break: break-word; border-top: 1px solid transparent; border-right: 1px solid transparent; border-bottom: 1px solid transparent; border-left: 1px solid transparent;text-align:center">${des}</td>
-          <td width="25%" style="vertical-align: top; padding: 10px; word-break: break-word; border-top: 1px solid transparent; border-right: 1px solid transparent; border-bottom: 1px solid transparent; border-left: 1px solid transparent;">${qty}</td>
-					<td width="25%" style="vertical-align: top; padding: 10px; word-break: break-word; border-top: 1px solid transparent; border-right: 1px solid transparent; border-bottom: 1px solid transparent; border-left: 1px solid transparent;">${rate}</td>
-					<td width="25%" style="vertical-align: top; padding: 10px; word-break: break-word; border-top: 1px solid transparent; border-right: 1px solid transparent; border-bottom: 1px solid transparent; border-left: 1px solid transparent;">${total}</td>
-				</tr>
-      `;
+            <tr style="background-color:#f9f9f9;">
+              <td><b>${name}</b></td>
+              <td>${des}</td>
+              <td>${qty}</td>
+              <td>${rate}</td>
+              <td>${total}</td>
+            </tr>
+          `;
         })
         .join("") || '<tr><td colspan="4">No services found</td></tr>';
 
     html = html.replace("{{invoiceItems}}", invoiceItems);
 
-    // Generate PDF
-    const browser = await puppeteer.launch({ headless: "new" });
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "networkidle0" });
-    const pdf = await page.pdf({ format: "A4", printBackground: true });
-    await browser.close();
+    // Launch headless Chromium from AWS Lambda
+  const browser = await Chromium.puppeteer.launch({
+    args: Chromium.args,
+    executablePath: await Chromium.executablePath,
+    headless: Chromium.headless,
+  });
 
-    // Send PDF
-    res.set({
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename=Invoice-${invoice.invoiceNumber}.pdf`,
-    });
-    res.send(pdf);
+  const page = await browser.newPage();
+  await page.setContent(html, { waitUntil: "networkidle0" });
+  const pdf = await page.pdf({ format: "A4", printBackground: true });
+  await browser.close();
+
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", "attachment; filename=test.pdf");
+  res.send(pdf);
   } catch (err) {
     console.error("PDF generation error:", err);
     res.status(500).json({ error: "Could not generate PDF" });
