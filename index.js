@@ -16,10 +16,9 @@ if (process.env.NODE_ENV === 'development') {
   DotEnv.config();
 }
 
+Database()
 
 const app = express()
-
-Database()
 
 app.use(cors())
 app.use(bodyparser.json())
