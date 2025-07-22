@@ -7,6 +7,7 @@ const Database = require('./db/db')
 // const authRoute = require('./authRoute/authRoute')
 const apiRoute = require('./apiRoute/apiRoute')
 const check = require('./middleware/block')
+const { downloadInvoice } = require('./api/api')
 
 // This works locally only, and is ignored on Vercel
 if (process.env.NODE_ENV === 'development') {
@@ -23,6 +24,7 @@ app.use(cors())
 app.use(bodyparser.json())
 
 app.use('/api',check,apiRoute)
+app.use("/api/invoice/:secureToken", downloadInvoice);
 
 app.get('/',async(req,res)=>{
     res.send('i am connected!')
