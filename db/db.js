@@ -1,16 +1,20 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const dataBase = async (req, res) => {
   try {
     const mongouri = process.env.MONGO_DB;
 
     if (!mongouri) {
-      throw new Error('Database not connected...mongo string not found in env!');
+      throw new Error(
+        "Database not connected...mongo string not found in env!"
+      );
     }
 
-    const connected = await mongoose.connect(mongouri);
-    console.log(`✅ MongoDB connected: ${connected.connection.host}`);
+    const connected = await mongoose.connect(`${mongouri}/client_service`);
 
+    console.log(
+      `✅ MongoDB connected: ${connected.connection.host}/${connected.connection.name}`
+    );
   } catch (error) {
     console.error("❌ DB Connection Error:", error.message);
     if (res) {
