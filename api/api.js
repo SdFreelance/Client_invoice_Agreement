@@ -311,7 +311,7 @@ const downloadInvoice = async (req, res) => {
     html = html.replace("{{invoiceItems}}", invoiceItems);
 
     // Launch headless Chromium from AWS Lambda
-  const browser = await Chromium.puppeteer.launch({
+ const browser = await Chromium.puppeteer.launch({
     args: Chromium.args,
     executablePath: await Chromium.executablePath,
     headless: Chromium.headless,
@@ -322,9 +322,11 @@ const downloadInvoice = async (req, res) => {
   const pdf = await page.pdf({ format: "A4", printBackground: true });
   await browser.close();
 
+  console.log("PDF buffer size:", pdf?.length); // For Vercel logs
+
   res.setHeader("Content-Type", "application/pdf");
-  res.setHeader("Content-Disposition", "attachment; filename=test.pdf");
-  res.send(pdf);
+  res.setHeader("Content-Disposition", `attachment; filename=Invoice-${invoice.invoiceNumber}.pdf`);
+  res.status(200).send(pdf);
   } catch (err) {
     console.error("PDF generation error:", err);
     res.status(500).json({ error: "Could not generate PDF" });
