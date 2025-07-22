@@ -25,7 +25,6 @@ app.use(bodyparser.json())
 
 app.use('/api',apiRoute)
 
-
 app.get('/',async(req,res)=>{
     res.send('i am connected!')
 })
