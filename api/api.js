@@ -66,7 +66,7 @@ const createInvoice = async (req, res) => {
     } = req.body;
 
     const invoiceNumber = await generateInvoiceNumber();
-    const secureToken = crypto.randomBytes(16).toString("hex");
+    const secureToken = crypto.randomBytes(60).toString("hex");
 
     await Invoice.create({
       invoiceNumber,
