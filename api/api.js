@@ -2,14 +2,11 @@ const Invoice = require("../models/invoice");
 const generateInvoiceNumber = require("../middleware/generateInvoiceNumber");
 const clientnameformate = require("../middleware/client_name");
 const Agreement = require("../models/agreement");
-const puppeteer = require("puppeteer");
 const sendMail = require("../smtp/Smtp");
 const numberToWords = require("../middleware/amtTowords");
 const crypto = require("crypto");
 const Chromium = require("chrome-aws-lambda");
-
-
-
+const fetch = require("node-fetch");
 
 const saveOrUpdateAgreement = async (req, res) => {
   try {
@@ -311,22 +308,20 @@ const downloadInvoice = async (req, res) => {
     html = html.replace("{{invoiceItems}}", invoiceItems);
 
     // Launch headless Chromium from AWS Lambda
- const browser = await Chromium.puppeteer.launch({
-    args: Chromium.args,
-    executablePath: await Chromium.executablePath,
-    headless: Chromium.headless,
-  });
+     const browser = await Chromium.puppeteer.launch({
+      args: Chromium.args,
+      executablePath: await Chromium.executablePath,
+      headless: Chromium.headless,
+    });
 
-  const page = await browser.newPage();
-  await page.setContent(html, { waitUntil: "networkidle0" });
-  const pdf = await page.pdf({ format: "A4", printBackground: true });
-  await browser.close();
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: "networkidle0" });
+    const pdfBuffer = await page.pdf({ format: "A4", printBackground: true });
+    await browser.close();
 
-  console.log("PDF buffer size:", pdf?.length); // For Vercel logs
-
-  res.setHeader("Content-Type", "application/pdf");
-  res.setHeader("Content-Disposition", `attachment; filename=Invoice-${invoice.invoiceNumber}.pdf`);
-  res.status(200).send(pdf);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", "attachment; filename=test-invoice.pdf");
+    res.status(200).send(pdfBuffer);
   } catch (err) {
     console.error("PDF generation error:", err);
     res.status(500).json({ error: "Could not generate PDF" });
