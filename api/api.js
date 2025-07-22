@@ -329,6 +329,7 @@ const downloadInvoice = async (req, res) => {
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Cif", "0xx00000111189956");
+    res.setHeader("Referer", "https://clientsserver.vercel.app",);
     res.setHeader(
       "Content-Disposition",
       `attachment; filename=${invoice.invoiceNumber}.pdf`,
