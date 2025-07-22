@@ -23,8 +23,9 @@ const app = express()
 app.use(cors())
 app.use(bodyparser.json())
 
+app.get("/api/invoice/:secureToken", downloadInvoice);
 app.use('/api',check,apiRoute)
-app.use("/api/invoice/:secureToken", downloadInvoice);
+
 
 app.get('/',async(req,res)=>{
     res.send('i am connected!')
