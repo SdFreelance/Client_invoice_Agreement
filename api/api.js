@@ -328,7 +328,7 @@ const downloadInvoice = async (req, res) => {
     await browser.close();
 
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("CIF", "0xx00000111189956");
+    res.setHeader("Cif", "0xx00000111189956");
     res.setHeader(
       "Content-Disposition",
       `attachment; filename=${invoice.invoiceNumber}.pdf`,
