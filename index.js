@@ -10,7 +10,7 @@ const check = require('./middleware/block')
 
 // This works locally only, and is ignored on Vercel
 if (process.env.NODE_ENV === 'development') {
-  DotEnv.config({ path: ['.env.local', '.env'] });
+  DotEnv.config({path: ['.env.local', '.env']});
 } else {
   DotEnv.config();
 }
