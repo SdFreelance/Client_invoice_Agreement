@@ -1,51 +1,12 @@
 const Invoice = require("../models/invoice");
 const generateInvoiceNumber = require("../middleware/generateInvoiceNumber");
-const clientnameformate = require("../middleware/client_name");
-const Agreement = require("../models/agreement");
+// const clientnameformate = require("../middleware/client_name");
+// const Agreement = require("../models/agreement");
 const sendMail = require("../smtp/Smtp");
 const numberToWords = require("../middleware/amtTowords");
 const crypto = require("crypto");
 const chromium = require("@sparticuz/chromium");
 const puppeteer = require("puppeteer-core");
-
-const saveOrUpdateAgreement = async (req, res) => {
-  try {
-    const {
-      projectName,
-      clientName,
-      clientEmail,
-      totalAmount,
-      agreementText,
-      signature,
-    } = req.body;
-    const clientFolder = clientnameformate(clientName);
-
-    const updated = await Agreement.findOneAndUpdate(
-      { user: req.user._id, projectName }, // search by user + project
-      {
-        projectName,
-        clientName,
-        clientEmail,
-        totalAmount,
-        agreementText,
-        signature,
-        clientFolder,
-        user: req.user._id,
-      },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
-
-    res.status(200).json({ success: true, agreement: updated });
-  } catch (err) {
-    console.error(err);
-    if (err.code === 11000) {
-      return res
-        .status(400)
-        .json({ error: "Duplicate agreement for this user/project" });
-    }
-    res.status(500).json({ error: "Failed to save agreement" });
-  }
-};
 
 //=======================================================================Invoice===============================================================================//
 //=====InvoiceSlip=====//
@@ -90,7 +51,7 @@ const createInvoice = async (req, res) => {
       .json({ success: true, statuscode: 200, message: "invoice saved!" });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Failed to create invoice" });
+    res.status(500).json({ status: false,status_code: 500, message: "Failed to create invoice" });
   }
 };
 
@@ -101,6 +62,11 @@ const sendInvoice = async (req, res) => {
     const invoice = await Invoice.findOne({ invoiceNumber });
 
     if (!invoice) {
+      res.status(400).json({
+        status: false,
+        status_code: 400,
+        message: "Invoice not found",
+      });
     } else {
       const rawDate = new Date();
       const day = String(rawDate.getDate()).padStart(2, "0");
@@ -179,7 +145,7 @@ const sendInvoice = async (req, res) => {
     }
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Failed to create invoice" });
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
@@ -189,36 +155,53 @@ const updateInvoice = async (req, res) => {
     const invoiceNumber = req.params.invoiceNumber;
 
     // Find the invoice
-    const invoice = await Invoice.findOne(invoiceNumber);
+    const invoice = await Invoice.findOne({ invoiceNumber });
     if (!Invoice) {
-      return res.status(404).json({ error: "Invoice not found" });
+      return res
+        .status(404)
+        .json({ success: false, status_code: 404, error: "Invoice not found" });
     }
     const updatableFields = [
       "projectName",
       "clientName",
       "clientEmail",
+      "dueDate",
+      "billperiod",
       "advancepayment",
       "totalpayment",
       "services",
-      "type",
+      "pay",
+      "paymentstatus",
     ];
 
+    // Check if all required fields are present in req.body
+    const missingFields = updatableFields.filter(
+      (field) => !req.body.hasOwnProperty(field)
+    );
+
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        success: false,
+        status_code: 400,
+        error: "Missing required fields",
+        missingFields,
+      });
+    }
+
     updatableFields.forEach((field) => {
-      if (req.body[field] !== undefined) {
+      if (req.body[field]) {
         invoice[field] = req.body[field];
       }
     });
 
-    if (req.body.clientName) {
-      invoice.clientFolder = clientnameformate(req.body.clientName);
-    }
-
     const updatedInvoice = await invoice.save();
 
-    res.status(200).json({ success: true, invoice: updatedInvoice });
+    res
+      .status(200)
+      .json({ success: true, status_code: 200, invoice: updatedInvoice });
   } catch (err) {
     console.error("Update invoice error:", err);
-    res.status(500).json({ error: "Failed to update invoice" });
+    res.status(500).json({ status: false,status_code: 500, message: "Internal Server Error" });
   }
 };
 
@@ -250,13 +233,13 @@ const getInvoiceByQuery = async (req, res) => {
     const invoices = await Invoice.find(query).sort({ createdAt: -1 });
 
     if (!invoices.length) {
-      return res.status(404).json({ error: "No matching invoices found" });
+      return res.status(404).json({ status: false,status_code: 404, message: "No matching invoices found" });
     }
 
-    res.status(200).json(invoices);
+    res.status(200).json({status: true,status_code: 200,invoices});
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Server error while fetching invoices" });
+    res.status(500).json({ status: false,status_code: 500, message: "Internal Server Error" });
   }
 };
 
@@ -265,12 +248,15 @@ const downloadInvoice = async (req, res) => {
   try {
     const secureToken = req.query.secureToken || req.params.secureToken;
     const invoice = await Invoice.findOne({ secureToken });
+
+    const template404Url =
+      "https://en7bfhvcnyczqxh0.public.blob.vercel-storage.com/client-invoice-agreement-store/templates/404.html";
+    let url = await fetch(template404Url).then((res) => res.text());
+
     if (!invoice)
       return res
         .status(404)
-        .send(
-          `<h2 style="text-align:center;">Sorry! Your invoice not found</h2>`
-        );
+        .send(url);
 
     const templateUrl =
       "https://en7bfhvcnyczqxh0.public.blob.vercel-storage.com/client-invoice-agreement-store/templates/invoice.A4.html";
@@ -330,19 +316,18 @@ const downloadInvoice = async (req, res) => {
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename=${invoice.invoiceNumber}.pdf`,
+      `attachment; filename=${invoice.invoiceNumber}.pdf`
     );
     res.status(200).send(pdfBuffer);
   } catch (err) {
     console.error("PDF generation error:", err);
-    res.status(500).json({ error: "Could not generate PDF" });
+    res.status(500).json({ status: false,status_code: 500, message: "Could not generate PDF" });
   }
 };
 
 //====Invoice send=====//
 
 module.exports = {
-  saveOrUpdateAgreement,
   sendInvoice,
   createInvoice,
   updateInvoice,
