@@ -156,7 +156,10 @@ const updateInvoice = async (req, res) => {
 
     // Find the invoice
     const invoice = await Invoice.findOne({ invoiceNumber });
-    if (!Invoice) {
+    console.log(invoice);
+    
+
+    if (invoice === null) {
       return res
         .status(404)
         .json({ success: false, status_code: 404, error: "Invoice not found" });
@@ -188,10 +191,10 @@ const updateInvoice = async (req, res) => {
       });
     }
 
-    updatableFields.forEach((field) => {
-      if (req.body[field]) {
-        invoice[field] = req.body[field];
-      }
+updatableFields.forEach((field) => {
+  if (req.body[field]) {
+    invoice[field] = req.body[field];
+  }
     });
 
     const updatedInvoice = await invoice.save();
