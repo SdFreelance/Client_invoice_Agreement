@@ -160,7 +160,7 @@ const updateInvoice = async (req, res) => {
       return res
         .status(404)
         .json({ success: false, status_code: 404, error: "Invoice not found" });
-    }
+    }else{
     const updatableFields = [
       "projectName",
       "clientName",
@@ -199,6 +199,7 @@ const updateInvoice = async (req, res) => {
     res
       .status(200)
       .json({ success: true, status_code: 200, invoice: updatedInvoice });
+  }
   } catch (err) {
     console.error("Update invoice error:", err);
     res.status(500).json({ status: false,status_code: 500, message: "Internal Server Error" });
